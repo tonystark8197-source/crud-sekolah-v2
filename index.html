@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Dynamic Favicon - will be updated by JavaScript -->
+    <link id="favicon" rel="icon" type="image/png" href="/favicon.ico" />
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Sistem Informasi Sekolah" />
+    <meta name="keywords" content="sekolah, pendidikan, sistem informasi" />
+    <title id="page-title">Sistem Informasi Sekolah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Fast Loading Script with localStorage -->
+    <script>
+      // Fast loading from localStorage for instant title and favicon
+      (function() {
+        try {
+          console.log('🚀 Fast loading from localStorage...');
+          const schoolSettings = localStorage.getItem('schoolSettings');
+
+          if (schoolSettings) {
+            const settings = JSON.parse(schoolSettings);
+            console.log('📦 Loaded settings from cache:', settings);
+
+            // Update title with priority: websiteTitle > schoolShortName > default
+            const titleElement = document.getElementById('page-title');
+            if (settings.websiteTitle) {
+              // Priority 1: Use websiteTitle from Settings
+              document.title = settings.websiteTitle;
+              if (titleElement) titleElement.textContent = settings.websiteTitle;
+              console.log('✅ Title loaded from websiteTitle:', settings.websiteTitle);
+            } else if (settings.schoolShortName) {
+              // Priority 2: Use schoolShortName + suffix
+              const formattedTitle = `${settings.schoolShortName} - Sistem Informasi`;
+              document.title = formattedTitle;
+              if (titleElement) titleElement.textContent = formattedTitle;
+              console.log('✅ Title loaded from schoolShortName:', formattedTitle);
+            } else {
+              console.log('ℹ️ No title data in cache, using default');
+            }
+
+            // Update favicon with cache busting
+            if (settings.logoUrl && settings.logoUrl !== 'http://localhost:8000/images/logo/logo-school.png') {
+              const favicon = document.getElementById('favicon');
+              const appleTouchIcon = document.getElementById('apple-touch-icon');
+
+              // Add timestamp to force refresh
+              const timestampedUrl = settings.logoUrl.includes('?')
+                ? `${settings.logoUrl}&t=${Date.now()}`
+                : `${settings.logoUrl}?t=${Date.now()}`;
+
+              if (favicon) favicon.href = timestampedUrl;
+              if (appleTouchIcon) appleTouchIcon.href = timestampedUrl;
+              console.log('✅ Favicon loaded from cache:', timestampedUrl);
+            } else {
+              console.log('ℹ️ No logo data in cache, using default favicon');
+            }
+
+            // Store load time for performance tracking
+            const loadTime = Date.now();
+            sessionStorage.setItem('fastLoadTime', loadTime.toString());
+            console.log('⚡ Fast load completed in:', Date.now() - performance.timeOrigin, 'ms');
+          } else {
+            console.log('ℹ️ No cached settings found, will load from API');
+          }
+        } catch (e) {
+          console.error('❌ Failed to load cached school settings:', e);
+        }
+      })();
+
+      // Listen for settings updates and update title/favicon immediately
+      window.addEventListener('schoolSettingsUpdated', function(event) {
+        try {
+          console.log('📡 Settings update received in index.html:', event.detail);
+          const settings = event.detail;
+
+          // Update title immediately
+          const titleElement = document.getElementById('page-title');
+          if (settings.websiteTitle) {
+            document.title = settings.websiteTitle;
+            if (titleElement) titleElement.textContent = settings.websiteTitle;
+            console.log('✅ Title updated via event:', settings.websiteTitle);
+          } else if (settings.schoolShortName) {
+            const formattedTitle = `${settings.schoolShortName} - Sistem Informasi`;
+            document.title = formattedTitle;
+            if (titleElement) titleElement.textContent = formattedTitle;
+            console.log('✅ Title updated via event:', formattedTitle);
+          }
+
+          // Update favicon immediately
+          if (settings.logoUrl) {
+            const favicon = document.getElementById('favicon');
+            const appleTouchIcon = document.getElementById('apple-touch-icon');
+            const timestampedUrl = `${settings.logoUrl}?t=${Date.now()}`;
+
+            if (favicon) favicon.href = timestampedUrl;
+            if (appleTouchIcon) appleTouchIcon.href = timestampedUrl;
+            console.log('✅ Favicon updated via event:', timestampedUrl);
+          }
+        } catch (e) {
+          console.error('❌ Failed to update from settings event:', e);
+        }
+      });
+
+      // Listen for logo updates
+      window.addEventListener('logoUpdated', function(event) {
+        try {
+          console.log('📡 Logo update received in index.html:', event.detail);
+          if (event.detail && event.detail.logoUrl) {
+            const favicon = document.getElementById('favicon');
+            const appleTouchIcon = document.getElementById('apple-touch-icon');
+            const timestampedUrl = `${event.detail.logoUrl}?t=${Date.now()}`;
+
+            if (favicon) favicon.href = timestampedUrl;
+            if (appleTouchIcon) appleTouchIcon.href = timestampedUrl;
+            console.log('✅ Favicon updated via logo event:', timestampedUrl);
+          }
+        } catch (e) {
+          console.error('❌ Failed to update from logo event:', e);
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

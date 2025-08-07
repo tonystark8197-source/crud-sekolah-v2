@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Favicon & Title Update</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .current-info { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <h1>🎨 Test Favicon & Title Update</h1>
+    
+    <div class="current-info">
+        <h3>Current Page Info:</h3>
+        <p><strong>Title:</strong> <span id="current-title">Loading...</span></p>
+        <p><strong>Favicon:</strong> <span id="current-favicon">Loading...</span></p>
+        <p><strong>School Settings:</strong> <span id="current-settings">Loading...</span></p>
+    </div>
+    
+    <button onclick="testGetSettings()">1. Get Current Settings</button>
+    <button onclick="testUpdateTitle()">2. Update Title</button>
+    <button onclick="testUpdateFavicon()">3. Update Favicon</button>
+    <button onclick="testFullUpdate()">4. Full Update (Title + Favicon)</button>
+    <button onclick="clearCache()">5. Clear Cache</button>
+    
+    <div class="form-group">
+        <label for="newTitle">New Title:</label>
+        <input type="text" id="newTitle" placeholder="SMA Negeri 1 Jakarta - Unggul dalam Prestasi" value="SMA Negeri 1 Jakarta - Unggul dalam Prestasi">
+    </div>
+    
+    <div class="form-group">
+        <label for="newSchoolName">School Short Name:</label>
+        <input type="text" id="newSchoolName" placeholder="SMAN 1 Jakarta" value="SMAN 1 Jakarta">
+    </div>
+    
+    <div id="result" class="result info">Ready to test favicon and title updates...</div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        
+        function log(message, type = 'info') {
+            const element = document.getElementById('result');
+            element.className = `result ${type}`;
+            element.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.log(message);
+        }
+        
+        function updateCurrentInfo() {
+            // Update current title
+            document.getElementById('current-title').textContent = document.title;
+            
+            // Update current favicon
+            const favicon = document.querySelector('link[rel="icon"]') || document.querySelector('link[rel="shortcut icon"]');
+            document.getElementById('current-favicon').textContent = favicon ? favicon.href : 'None';
+            
+            // Update current settings
+            const settings = localStorage.getItem('schoolSettings');
+            if (settings) {
+                try {
+                    const parsed = JSON.parse(settings);
+                    document.getElementById('current-settings').textContent = 
+                        `Name: ${parsed.schoolShortName || 'N/A'}, Logo: ${parsed.logoUrl ? 'Set' : 'None'}`;
+                } catch (e) {
+                    document.getElementById('current-settings').textContent = 'Invalid JSON';
+                }
+            } else {
+                document.getElementById('current-settings').textContent = 'No cached settings';
+            }
+        }
+        
+        async function testGetSettings() {
+            try {
+                log('🔄 Getting current settings...', 'info');
+                
+                const response = await fetch(`${API_BASE}/settings`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                const data = await response.json();
+                console.log('Settings response:', data);
+                
+                if (response.ok && data.success !== false) {
+                    const settings = Array.isArray(data) ? data : (data.data || data);
+                    
+                    // Convert array to object if needed
+                    let settingsObj = {};
+                    if (Array.isArray(settings)) {
+                        settings.forEach(setting => {
+                            settingsObj[setting.key] = setting.value;
+                        });
+                    } else {
+                        settingsObj = settings;
+                    }
+                    
+                    log(`✅ Settings retrieved!
+School Name: ${settingsObj.schoolName || 'N/A'}
+Short Name: ${settingsObj.schoolShortName || 'N/A'}
+Website Title: ${settingsObj.websiteTitle || 'N/A'}
+Logo URL: ${settingsObj.logoUrl || 'N/A'}
+Total Settings: ${Array.isArray(settings) ? settings.length : Object.keys(settingsObj).length}`, 'success');
+                    
+                    // Update localStorage
+                    localStorage.setItem('schoolSettings', JSON.stringify(settingsObj));
+                    updateCurrentInfo();
+                } else {
+                    log(`❌ Failed to get settings: ${data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log(`💥 Error getting settings: ${error.message}`, 'error');
+            }
+        }
+        
+        function testUpdateTitle() {
+            try {
+                log('🔄 Updating page title...', 'info');
+                
+                const newTitle = document.getElementById('newTitle').value;
+                const schoolName = document.getElementById('newSchoolName').value;
+                
+                if (!newTitle && !schoolName) {
+                    log('❌ Please enter a title or school name', 'error');
+                    return;
+                }
+                
+                // Method 1: Direct title update
+                if (newTitle) {
+                    document.title = newTitle;
+                    const titleElement = document.getElementById('page-title');
+                    if (titleElement) titleElement.textContent = newTitle;
+                }
+                
+                // Method 2: School name format
+                if (schoolName) {
+                    const formattedTitle = `${schoolName} - Sistem Informasi`;
+                    document.title = formattedTitle;
+                    const titleElement = document.getElementById('page-title');
+                    if (titleElement) titleElement.textContent = formattedTitle;
+                }
+                
+                // Update localStorage
+                const settings = JSON.parse(localStorage.getItem('schoolSettings') || '{}');
+                if (newTitle) settings.websiteTitle = newTitle;
+                if (schoolName) settings.schoolShortName = schoolName;
+                localStorage.setItem('schoolSettings', JSON.stringify(settings));
+                
+                // Dispatch event
+                window.dispatchEvent(new CustomEvent('schoolSettingsUpdated', { 
+                    detail: settings 
+                }));
+                
+                updateCurrentInfo();
+                log(`✅ Title updated to: ${document.title}`, 'success');
+                
+            } catch (error) {
+                log(`💥 Error updating title: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testUpdateFavicon() {
+            try {
+                log('🔄 Testing favicon update...', 'info');
+                
+                // Get current logo from API
+                const response = await fetch(`${API_BASE}/logo/current`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Logo response:', data);
+                    
+                    if (data.success && data.data && data.data.url) {
+                        const logoUrl = data.data.url;
+                        
+                        // Force update favicon
+                        const timestamp = Date.now();
+                        const timestampedUrl = `${logoUrl}?t=${timestamp}&force=1`;
+                        
+                        // Remove existing favicons
+                        const existingFavicons = document.querySelectorAll('link[rel*="icon"]');
+                        existingFavicons.forEach(favicon => favicon.remove());
+                        
+                        // Create new favicon
+                        const favicon = document.createElement('link');
+                        favicon.id = 'favicon';
+                        favicon.rel = 'icon';
+                        favicon.type = 'image/png';
+                        favicon.href = timestampedUrl;
+                        document.head.appendChild(favicon);
+                        
+                        // Create apple touch icon
+                        const appleTouchIcon = document.createElement('link');
+                        appleTouchIcon.id = 'apple-touch-icon';
+                        appleTouchIcon.rel = 'apple-touch-icon';
+                        appleTouchIcon.href = timestampedUrl;
+                        document.head.appendChild(appleTouchIcon);
+                        
+                        // Update localStorage
+                        const settings = JSON.parse(localStorage.getItem('schoolSettings') || '{}');
+                        settings.logoUrl = logoUrl;
+                        localStorage.setItem('schoolSettings', JSON.stringify(settings));
+                        
+                        updateCurrentInfo();
+                        log(`✅ Favicon updated to: ${timestampedUrl}`, 'success');
+                        
+                    } else {
+                        log('❌ No logo found in API response', 'error');
+                    }
+                } else {
+                    log(`❌ Failed to get logo: ${response.status}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`💥 Error updating favicon: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testFullUpdate() {
+            try {
+                log('🔄 Performing full update (title + favicon)...', 'info');
+                
+                // Update title first
+                testUpdateTitle();
+                
+                // Wait a bit then update favicon
+                setTimeout(async () => {
+                    await testUpdateFavicon();
+                    log('✅ Full update completed!', 'success');
+                }, 500);
+                
+            } catch (error) {
+                log(`💥 Error in full update: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearCache() {
+            try {
+                log('🧹 Clearing cache...', 'info');
+                
+                // Clear localStorage
+                localStorage.removeItem('schoolSettings');
+                sessionStorage.removeItem('cachedLogoUrl');
+                
+                // Reset to default favicon
+                const existingFavicons = document.querySelectorAll('link[rel*="icon"]');
+                existingFavicons.forEach(favicon => favicon.remove());
+                
+                const defaultFavicon = document.createElement('link');
+                defaultFavicon.id = 'favicon';
+                defaultFavicon.rel = 'icon';
+                defaultFavicon.type = 'image/x-icon';
+                defaultFavicon.href = '/favicon.ico';
+                document.head.appendChild(defaultFavicon);
+                
+                // Reset title
+                document.title = 'Sistem Informasi Sekolah';
+                
+                updateCurrentInfo();
+                log('✅ Cache cleared and reset to defaults', 'success');
+                
+            } catch (error) {
+                log(`💥 Error clearing cache: ${error.message}`, 'error');
+            }
+        }
+        
+        // Initialize on page load
+        window.onload = function() {
+            updateCurrentInfo();
+            
+            // Auto-get settings
+            setTimeout(testGetSettings, 1000);
+            
+            // Update info every 2 seconds
+            setInterval(updateCurrentInfo, 2000);
+        };
+    </script>
+</body>
+</html>

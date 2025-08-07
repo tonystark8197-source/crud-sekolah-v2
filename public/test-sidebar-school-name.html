@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sidebar School Name</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .current-info { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .test-section { border: 1px solid #ddd; padding: 15px; margin: 15px 0; border-radius: 8px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .preview { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #007bff; }
+    </style>
+</head>
+<body>
+    <h1>🏫 Test Sidebar School Name (Nama Singkat)</h1>
+    
+    <div class="current-info">
+        <h3>📊 Current Settings Cache:</h3>
+        <p><strong>School Name:</strong> <span id="current-school-name">Loading...</span></p>
+        <p><strong>School Short Name:</strong> <span id="current-school-short-name">Loading...</span></p>
+        <p><strong>Website Title:</strong> <span id="current-website-title">Loading...</span></p>
+        <p><strong>Cache Status:</strong> <span id="cache-status">Loading...</span></p>
+        <p><strong>Last Updated:</strong> <span id="last-updated">Loading...</span></p>
+    </div>
+
+    <div class="preview">
+        <h3>🎯 Sidebar Preview:</h3>
+        <div style="background: #2563eb; color: white; padding: 15px; border-radius: 8px; max-width: 250px;">
+            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 8px; margin-right: 12px; display: flex; align-items: center; justify-content: center;">
+                    🏫
+                </div>
+                <div>
+                    <div style="font-size: 18px; font-weight: bold;">Admin Panel</div>
+                    <div id="sidebar-preview" style="font-size: 14px; color: #bfdbfe;">
+                        Loading...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 Test School Short Name</h3>
+        <button onclick="testGetSettings()">1. Get Current Settings</button>
+        <button onclick="testUpdateShortName()">2. Update Short Name</button>
+        <button onclick="testClearCache()">3. Clear Cache</button>
+        <button onclick="testEventDispatch()">4. Test Event Dispatch</button>
+        
+        <div class="form-group">
+            <label for="testShortName">Test School Short Name:</label>
+            <input type="text" id="testShortName" placeholder="SMAN 1 Jakarta" value="SMAN 1 Jakarta">
+        </div>
+        
+        <div class="form-group">
+            <label for="testSchoolName">Test School Full Name:</label>
+            <input type="text" id="testSchoolName" placeholder="SMA Negeri 1 Jakarta" value="SMA Negeri 1 Jakarta">
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>📡 Real-time Testing</h3>
+        <button onclick="simulateSettingsUpdate()">Simulate Settings Update</button>
+        <button onclick="testSidebarSync()">Test Sidebar Sync</button>
+        <button onclick="openAdminPanel()">Open Admin Panel</button>
+        
+        <div id="event-log" class="result info" style="max-height: 200px; overflow-y: auto;">
+Event log will appear here...
+        </div>
+    </div>
+    
+    <div id="result" class="result info">Ready to test sidebar school name...</div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let eventLog = [];
+        
+        function log(message, type = 'info') {
+            const element = document.getElementById('result');
+            element.className = `result ${type}`;
+            element.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.log(message);
+        }
+        
+        function logEvent(message) {
+            eventLog.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+            const eventLogElement = document.getElementById('event-log');
+            eventLogElement.textContent = eventLog.slice(-10).join('\n');
+            console.log('EVENT:', message);
+        }
+        
+        function updateCurrentInfo() {
+            const settings = localStorage.getItem('schoolSettings');
+            
+            if (settings) {
+                try {
+                    const parsed = JSON.parse(settings);
+                    
+                    document.getElementById('current-school-name').textContent = parsed.schoolName || 'N/A';
+                    document.getElementById('current-school-short-name').textContent = parsed.schoolShortName || 'N/A';
+                    document.getElementById('current-website-title').textContent = parsed.websiteTitle || 'N/A';
+                    document.getElementById('cache-status').textContent = 'Available';
+                    
+                    // Update sidebar preview
+                    const sidebarPreview = document.getElementById('sidebar-preview');
+                    sidebarPreview.textContent = parsed.schoolShortName || 'Sistem Informasi Sekolah';
+                    
+                } catch (e) {
+                    document.getElementById('cache-status').textContent = 'Invalid JSON';
+                    document.getElementById('sidebar-preview').textContent = 'Error loading';
+                }
+            } else {
+                document.getElementById('current-school-name').textContent = 'No cache';
+                document.getElementById('current-school-short-name').textContent = 'No cache';
+                document.getElementById('current-website-title').textContent = 'No cache';
+                document.getElementById('cache-status').textContent = 'Empty';
+                document.getElementById('sidebar-preview').textContent = 'Sistem Informasi Sekolah';
+            }
+            
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        }
+        
+        async function testGetSettings() {
+            try {
+                log('🔄 Getting current settings from API...', 'info');
+                
+                const response = await fetch(`${API_BASE}/settings`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                const data = await response.json();
+                console.log('Settings response:', data);
+                
+                if (response.ok && data.success !== false) {
+                    const settings = Array.isArray(data) ? data : (data.data || data);
+                    
+                    // Convert array to object if needed
+                    let settingsObj = {};
+                    if (Array.isArray(settings)) {
+                        settings.forEach(setting => {
+                            settingsObj[setting.key] = setting.value;
+                        });
+                    } else {
+                        settingsObj = settings;
+                    }
+                    
+                    log(`✅ Settings retrieved!
+School Name: ${settingsObj.schoolName || 'N/A'}
+School Short Name: ${settingsObj.schoolShortName || 'N/A'}
+Website Title: ${settingsObj.websiteTitle || 'N/A'}
+Sidebar will show: "${settingsObj.schoolShortName || 'Sistem Informasi Sekolah'}"`, 'success');
+                    
+                    // Update localStorage
+                    localStorage.setItem('schoolSettings', JSON.stringify(settingsObj));
+                    updateCurrentInfo();
+                } else {
+                    log(`❌ Failed to get settings: ${data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log(`💥 Error getting settings: ${error.message}`, 'error');
+            }
+        }
+        
+        function testUpdateShortName() {
+            try {
+                log('🔄 Updating school short name...', 'info');
+                
+                const shortName = document.getElementById('testShortName').value;
+                const fullName = document.getElementById('testSchoolName').value;
+                
+                if (!shortName) {
+                    log('❌ Please enter a school short name', 'error');
+                    return;
+                }
+                
+                // Get existing settings
+                const settings = JSON.parse(localStorage.getItem('schoolSettings') || '{}');
+                
+                // Update with new values
+                settings.schoolShortName = shortName;
+                if (fullName) settings.schoolName = fullName;
+                settings.timestamp = Date.now();
+                
+                // Save to localStorage
+                localStorage.setItem('schoolSettings', JSON.stringify(settings));
+                
+                // Dispatch event to notify sidebar
+                window.dispatchEvent(new CustomEvent('schoolSettingsUpdated', { 
+                    detail: settings 
+                }));
+                
+                updateCurrentInfo();
+                log(`✅ School short name updated!
+Short Name: ${shortName}
+Full Name: ${fullName || 'Not changed'}
+Sidebar should now show: "${shortName}"`, 'success');
+                
+                logEvent(`School short name updated to: ${shortName}`);
+                
+            } catch (error) {
+                log(`💥 Error updating short name: ${error.message}`, 'error');
+            }
+        }
+        
+        function testClearCache() {
+            try {
+                log('🧹 Clearing cache...', 'info');
+                
+                localStorage.removeItem('schoolSettings');
+                sessionStorage.clear();
+                
+                updateCurrentInfo();
+                log('✅ Cache cleared. Sidebar should show default: "Sistem Informasi Sekolah"', 'success');
+                
+                logEvent('Cache cleared');
+                
+            } catch (error) {
+                log(`💥 Error clearing cache: ${error.message}`, 'error');
+            }
+        }
+        
+        function testEventDispatch() {
+            try {
+                log('🔄 Testing event dispatch...', 'info');
+                
+                const testSettings = {
+                    schoolShortName: 'TEST SCHOOL',
+                    schoolName: 'Test School Full Name',
+                    timestamp: Date.now()
+                };
+                
+                // Update localStorage
+                localStorage.setItem('schoolSettings', JSON.stringify(testSettings));
+                
+                // Dispatch event
+                window.dispatchEvent(new CustomEvent('schoolSettingsUpdated', { 
+                    detail: testSettings 
+                }));
+                
+                updateCurrentInfo();
+                log('✅ Event dispatched! Sidebar should show: "TEST SCHOOL"', 'success');
+                
+                logEvent('Test event dispatched');
+                
+            } catch (error) {
+                log(`💥 Error dispatching event: ${error.message}`, 'error');
+            }
+        }
+        
+        function simulateSettingsUpdate() {
+            const shortNames = [
+                'SMAN 1 Jakarta',
+                'SMAN 2 Bandung', 
+                'SMAN 3 Surabaya',
+                'SMAN 4 Medan',
+                'SMAN 5 Makassar'
+            ];
+            
+            const randomShortName = shortNames[Math.floor(Math.random() * shortNames.length)];
+            
+            const settings = {
+                schoolShortName: randomShortName,
+                schoolName: `${randomShortName.replace('SMAN', 'SMA Negeri')}`,
+                websiteTitle: `${randomShortName} - Unggul dalam Prestasi`,
+                timestamp: Date.now()
+            };
+            
+            localStorage.setItem('schoolSettings', JSON.stringify(settings));
+            window.dispatchEvent(new CustomEvent('schoolSettingsUpdated', { detail: settings }));
+            
+            updateCurrentInfo();
+            logEvent(`Simulated update: ${randomShortName}`);
+            log(`🎲 Random update: Sidebar should show "${randomShortName}"`, 'success');
+        }
+        
+        function testSidebarSync() {
+            log('🔄 Testing sidebar sync...', 'info');
+            
+            // Test multiple rapid updates
+            const updates = [
+                'SMAN 1 Test',
+                'SMAN 2 Test', 
+                'SMAN 3 Test'
+            ];
+            
+            updates.forEach((shortName, index) => {
+                setTimeout(() => {
+                    const settings = {
+                        schoolShortName: shortName,
+                        timestamp: Date.now()
+                    };
+                    
+                    localStorage.setItem('schoolSettings', JSON.stringify(settings));
+                    window.dispatchEvent(new CustomEvent('schoolSettingsUpdated', { detail: settings }));
+                    
+                    updateCurrentInfo();
+                    logEvent(`Sync test ${index + 1}: ${shortName}`);
+                    
+                    if (index === updates.length - 1) {
+                        log('✅ Sidebar sync test completed!', 'success');
+                    }
+                }, index * 1000);
+            });
+        }
+        
+        function openAdminPanel() {
+            log('🔄 Opening admin panel to verify sidebar...', 'info');
+            window.open('http://localhost:5174/admin/dashboard', '_blank');
+        }
+        
+        // Event listeners for testing
+        window.addEventListener('schoolSettingsUpdated', (event) => {
+            logEvent(`schoolSettingsUpdated: ${event.detail.schoolShortName || 'N/A'}`);
+        });
+        
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'schoolSettings') {
+                logEvent('localStorage changed: schoolSettings');
+                updateCurrentInfo();
+            }
+        });
+        
+        // Initialize on page load
+        window.onload = function() {
+            updateCurrentInfo();
+            
+            // Auto-get settings
+            setTimeout(testGetSettings, 1000);
+            
+            // Update info every 3 seconds
+            setInterval(updateCurrentInfo, 3000);
+            
+            log('✅ Sidebar school name test initialized', 'success');
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News CRUD Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 News CRUD Debug Test</h1>
+    <p><strong>Backend:</strong> http://localhost:8000/api</p>
+    <p><strong>Frontend:</strong> http://localhost:5174</p>
+    
+    <div class="test-section">
+        <h2>🔐 Authentication</h2>
+        <button onclick="testLogin()">Login as Admin</button>
+        <button onclick="checkAuth()">Check Auth Status</button>
+        <button onclick="clearAuth()">Clear Auth</button>
+        <div id="authResult" class="result info">Click Login to start testing...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📰 News API Tests</h2>
+        <button onclick="testGetNews()">GET /api/news</button>
+        <button onclick="testGetSingleNews()">GET /api/news/1</button>
+        <button onclick="testCreateNews()">POST /api/news (Create)</button>
+        <button onclick="testUpdateNews()">POST /api/news/1 (Update)</button>
+        <button onclick="testDeleteNews()">DELETE /api/news/1</button>
+        <div id="newsResult" class="result info">Ready to test news endpoints...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📝 Create News Form</h2>
+        <form id="newsForm">
+            <div class="form-group">
+                <label for="title">Title:</label>
+                <input type="text" id="title" name="title" value="Test News Article" required>
+            </div>
+            <div class="form-group">
+                <label for="content">Content:</label>
+                <textarea id="content" name="content" required>This is a test news article created via debug test. It should have an image with proper path pointing to frontend.</textarea>
+            </div>
+            <div class="form-group">
+                <label for="excerpt">Excerpt:</label>
+                <input type="text" id="excerpt" name="excerpt" value="Test excerpt for news article">
+            </div>
+            <div class="form-group">
+                <label for="category">Category:</label>
+                <select id="category" name="category" required>
+                    <option value="Berita Umum">Berita Umum</option>
+                    <option value="Akademik">Akademik</option>
+                    <option value="Kegiatan">Kegiatan</option>
+                    <option value="Pengumuman">Pengumuman</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="image">Image:</label>
+                <input type="file" id="image" name="image" accept="image/*" required>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="published" name="published" checked> Published
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="featured" name="featured"> Featured
+                </label>
+            </div>
+            <button type="button" onclick="submitNewsForm()">Create News</button>
+        </form>
+        <div id="formResult" class="result info">Fill form and click Create News...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🔍 Path Analysis</h2>
+        <button onclick="analyzeImagePaths()">Analyze Image Paths</button>
+        <button onclick="checkDirectories()">Check Directories</button>
+        <div id="pathResult" class="result info">Ready for path analysis...</div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let authToken = localStorage.getItem('adminToken');
+        let lastCreatedNewsId = null;
+        
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.log(message);
+        }
+        
+        function getAuthHeaders() {
+            return authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
+        }
+        
+        async function testLogin() {
+            try {
+                log('authResult', '🔄 Attempting login...', 'info');
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@school.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    authToken = data.token;
+                    localStorage.setItem('adminToken', authToken);
+                    log('authResult', `✅ Login successful!\nUser: ${data.user.name}\nRole: ${data.user.role}\nToken: ${authToken.substring(0, 30)}...`, 'success');
+                } else {
+                    log('authResult', `❌ Login failed: ${data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log('authResult', `💥 Login error: ${error.message}`, 'error');
+            }
+        }
+        
+        function checkAuth() {
+            if (authToken) {
+                log('authResult', `✅ Token exists: ${authToken.substring(0, 30)}...`, 'success');
+            } else {
+                log('authResult', '❌ No authentication token found', 'warning');
+            }
+        }
+        
+        function clearAuth() {
+            authToken = null;
+            localStorage.removeItem('adminToken');
+            log('authResult', '✅ Authentication cleared', 'info');
+        }
+        
+        async function testGetNews() {
+            try {
+                log('newsResult', '🔄 Testing GET /api/news...', 'info');
+                
+                const response = await fetch(`${API_BASE}/news`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('newsResult', `✅ GET /api/news successful!\nStatus: ${response.status}\nCount: ${data.data?.length || 0} news items\nTotal: ${data.total || 0}`, 'success');
+                    
+                    if (data.data && data.data.length > 0) {
+                        const firstNews = data.data[0];
+                        log('newsResult', `First news:\nID: ${firstNews.id}\nTitle: ${firstNews.title}\nImage URL: ${firstNews.image_url || 'No image'}`, 'info');
+                    }
+                } else {
+                    log('newsResult', `❌ GET /api/news failed!\nStatus: ${response.status}\nError: ${data.message || data.error || 'Unknown'}`, 'error');
+                }
+            } catch (error) {
+                log('newsResult', `💥 GET /api/news error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testGetSingleNews() {
+            try {
+                log('newsResult', '🔄 Testing GET /api/news/1...', 'info');
+                
+                const response = await fetch(`${API_BASE}/news/1`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('newsResult', `✅ GET /api/news/1 successful!\nTitle: ${data.data?.title}\nImage URL: ${data.data?.image_url || 'No image'}`, 'success');
+                } else {
+                    log('newsResult', `❌ GET /api/news/1 failed!\nStatus: ${response.status}\nError: ${data.message || data.error || 'Unknown'}`, 'error');
+                }
+            } catch (error) {
+                log('newsResult', `💥 GET /api/news/1 error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function submitNewsForm() {
+            if (!authToken) {
+                log('formResult', '❌ Please login first to create news', 'warning');
+                return;
+            }
+            
+            try {
+                log('formResult', '🔄 Creating news with form data...', 'info');
+                
+                const formData = new FormData();
+                formData.append('title', document.getElementById('title').value);
+                formData.append('content', document.getElementById('content').value);
+                formData.append('excerpt', document.getElementById('excerpt').value);
+                formData.append('category', document.getElementById('category').value);
+                formData.append('published', document.getElementById('published').checked);
+                formData.append('featured', document.getElementById('featured').checked);
+                
+                const imageFile = document.getElementById('image').files[0];
+                if (imageFile) {
+                    formData.append('image', imageFile);
+                } else {
+                    log('formResult', '❌ Please select an image file', 'warning');
+                    return;
+                }
+                
+                const response = await fetch(`${API_BASE}/news`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    lastCreatedNewsId = data.data.id;
+                    log('formResult', `✅ News created successfully!\nID: ${data.data.id}\nTitle: ${data.data.title}\nImage URL: ${data.data.image_url}\n\nPath Analysis:\n${analyzeImagePath(data.data.image_url)}`, 'success');
+                } else {
+                    log('formResult', `❌ Failed to create news!\nStatus: ${response.status}\nError: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                log('formResult', `💥 Create news error: ${error.message}`, 'error');
+            }
+        }
+        
+        function analyzeImagePath(imageUrl) {
+            if (!imageUrl) return 'No image URL provided';
+            
+            let analysis = `Image URL: ${imageUrl}\n`;
+            analysis += `Filename: ${imageUrl.split('/').pop()}\n`;
+            
+            if (imageUrl.includes('localhost:5174')) {
+                analysis += '✅ Points to frontend (localhost:5174)\n';
+            } else if (imageUrl.includes('localhost:8000')) {
+                analysis += '⚠️ Points to backend (localhost:8000)\n';
+            } else {
+                analysis += '❓ Unknown host\n';
+            }
+            
+            if (imageUrl.includes('/images/news/')) {
+                analysis += '✅ Uses correct news path\n';
+            } else {
+                analysis += '❌ Incorrect path structure\n';
+            }
+            
+            const filename = imageUrl.split('/').pop();
+            if (filename.includes('news_id_')) {
+                analysis += '✅ Filename contains news ID\n';
+            } else {
+                analysis += '⚠️ Filename does not contain news ID\n';
+            }
+            
+            return analysis;
+        }
+        
+        async function analyzeImagePaths() {
+            try {
+                log('pathResult', '🔄 Analyzing image paths...', 'info');
+                
+                const response = await fetch(`${API_BASE}/news`);
+                const data = await response.json();
+                
+                if (response.ok && data.data) {
+                    let analysis = `Found ${data.data.length} news items:\n\n`;
+                    
+                    data.data.forEach(news => {
+                        analysis += `News ID ${news.id}:\n`;
+                        analysis += analyzeImagePath(news.image_url);
+                        analysis += '\n' + '-'.repeat(40) + '\n';
+                    });
+                    
+                    log('pathResult', analysis, 'info');
+                } else {
+                    log('pathResult', '❌ Failed to get news data for analysis', 'error');
+                }
+            } catch (error) {
+                log('pathResult', `💥 Analysis error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function checkDirectories() {
+            log('pathResult', '🔄 Checking directory structure...\n\nNote: This test runs in browser and cannot directly check server directories.\nPlease check manually:\n\nFrontend: /frontend/public/images/news/\nBackend: /backend-laravel/public/images/news/', 'info');
+        }
+        
+        // Auto-check auth on page load
+        window.onload = function() {
+            checkAuth();
+        };
+    </script>
+</body>
+</html>

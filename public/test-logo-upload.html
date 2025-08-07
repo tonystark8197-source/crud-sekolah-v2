@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Logo Upload & Display</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .logo-display {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .logo-display img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .upload-area.dragover {
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Logo Upload & Display System</h1>
+        
+        <!-- Current Logo Status -->
+        <div class="test-section">
+            <h2>📋 Current Logo Status</h2>
+            <button onclick="checkCurrentLogo()">Check Current Logo</button>
+            <div id="current-logo-status"></div>
+        </div>
+
+        <!-- Logo Upload Test -->
+        <div class="test-section">
+            <h2>📤 Upload New Logo</h2>
+            <div class="upload-area" id="upload-area">
+                <p>Drag & drop logo file here or click to select</p>
+                <input type="file" id="logo-file" accept="image/*" style="display: none;">
+                <button onclick="document.getElementById('logo-file').click()">Select Logo File</button>
+            </div>
+            <div id="upload-preview"></div>
+            <button id="upload-btn" onclick="uploadLogo()" disabled>Upload Logo</button>
+            <div id="upload-result"></div>
+        </div>
+
+        <!-- Logo Display Test -->
+        <div class="test-section">
+            <h2>🖼️ Logo Display Test</h2>
+            <button onclick="testLogoDisplay()">Test All Logo Sources</button>
+            <div id="logo-display-results"></div>
+        </div>
+
+        <!-- Favicon Test -->
+        <div class="test-section">
+            <h2>🔖 Favicon Test</h2>
+            <button onclick="testFavicon()">Test Favicon Update</button>
+            <div id="favicon-result"></div>
+        </div>
+
+        <!-- Debug Log -->
+        <div class="test-section">
+            <h2>🐛 Debug Log</h2>
+            <button onclick="clearLog()">Clear Log</button>
+            <div id="debug-log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        
+        // Debug logging
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            logEntry.style.color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${timestamp}] ${type.toUpperCase()}: ${message}`);
+        }
+
+        function clearLog() {
+            document.getElementById('debug-log').innerHTML = '';
+        }
+
+        // File upload handling
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('logo-file');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            selectedFile = file;
+            log(`File selected: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('upload-preview').innerHTML = `
+                    <div class="logo-display">
+                        <img src="${e.target.result}" alt="Preview">
+                        <div>
+                            <strong>${file.name}</strong><br>
+                            Size: ${(file.size / 1024).toFixed(2)} KB<br>
+                            Type: ${file.type}
+                        </div>
+                    </div>
+                `;
+            };
+            reader.readAsDataURL(file);
+            
+            document.getElementById('upload-btn').disabled = false;
+        }
+
+        // Check current logo
+        async function checkCurrentLogo() {
+            log('Checking current logo from API...');
+            try {
+                const response = await fetch('http://localhost:8000/api/logo/current');
+                const result = await response.json();
+                
+                const statusDiv = document.getElementById('current-logo-status');
+                
+                if (result.success) {
+                    log('Current logo found: ' + result.data.filename, 'success');
+                    statusDiv.innerHTML = `
+                        <div class="logo-display">
+                            <img src="${result.data.url}" alt="Current Logo" 
+                                 onload="this.nextElementSibling.className='status success'; this.nextElementSibling.textContent='✅ Loaded'"
+                                 onerror="this.nextElementSibling.className='status error'; this.nextElementSibling.textContent='❌ Failed'">
+                            <span class="status info">Loading...</span>
+                            <div>
+                                <strong>Current Logo</strong><br>
+                                File: ${result.data.filename}<br>
+                                URL: ${result.data.url}<br>
+                                Size: ${result.data.formatted_size || 'Unknown'}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    log('No current logo found', 'warning');
+                    statusDiv.innerHTML = '<span class="status warning">❌ No logo found</span>';
+                }
+            } catch (error) {
+                log('Error checking current logo: ' + error.message, 'error');
+                document.getElementById('current-logo-status').innerHTML = 
+                    `<span class="status error">❌ API Error: ${error.message}</span>`;
+            }
+        }
+
+        // Upload logo
+        async function uploadLogo() {
+            if (!selectedFile) {
+                log('No file selected', 'error');
+                return;
+            }
+
+            log('Starting logo upload...');
+            const uploadBtn = document.getElementById('upload-btn');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+
+            try {
+                const formData = new FormData();
+                formData.append('logo', selectedFile);
+                formData.append('description', 'Test upload from logo test page');
+
+                const response = await fetch('http://localhost:8000/api/logo/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                const resultDiv = document.getElementById('upload-result');
+
+                if (result.success) {
+                    log('Logo uploaded successfully: ' + result.data.filename, 'success');
+                    resultDiv.innerHTML = `
+                        <div class="logo-display">
+                            <img src="${result.data.url}" alt="Uploaded Logo"
+                                 onload="this.nextElementSibling.className='status success'; this.nextElementSibling.textContent='✅ Loaded'"
+                                 onerror="this.nextElementSibling.className='status error'; this.nextElementSibling.textContent='❌ Failed'">
+                            <span class="status info">Loading...</span>
+                            <div>
+                                <strong>Upload Success!</strong><br>
+                                File: ${result.data.filename}<br>
+                                URL: ${result.data.url}<br>
+                                Size: ${result.data.formatted_size}
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Auto-test display after upload
+                    setTimeout(() => {
+                        testLogoDisplay();
+                        testFavicon();
+                    }, 1000);
+                } else {
+                    log('Upload failed: ' + result.message, 'error');
+                    resultDiv.innerHTML = `<span class="status error">❌ Upload failed: ${result.message}</span>`;
+                }
+            } catch (error) {
+                log('Upload error: ' + error.message, 'error');
+                document.getElementById('upload-result').innerHTML = 
+                    `<span class="status error">❌ Upload error: ${error.message}</span>`;
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = 'Upload Logo';
+            }
+        }
+
+        // Test logo display
+        async function testLogoDisplay() {
+            log('Testing logo display from various sources...');
+            const resultDiv = document.getElementById('logo-display-results');
+            
+            const testUrls = [
+                { name: 'Backend Default', url: 'http://localhost:8000/images/logo/logo-school.png' },
+                { name: 'Frontend Proxy', url: '/images/logo/logo-school.png' },
+                { name: 'Current API Logo', url: null } // Will be fetched
+            ];
+
+            // Get current logo URL
+            try {
+                const response = await fetch('http://localhost:8000/api/logo/current');
+                const result = await response.json();
+                if (result.success) {
+                    testUrls[2].url = result.data.url;
+                }
+            } catch (error) {
+                log('Could not fetch current logo URL: ' + error.message, 'warning');
+            }
+
+            let html = '';
+            testUrls.forEach((test, index) => {
+                if (test.url) {
+                    html += `
+                        <div class="logo-display">
+                            <img src="${test.url}" alt="${test.name}"
+                                 onload="this.nextElementSibling.className='status success'; this.nextElementSibling.textContent='✅ Loaded'"
+                                 onerror="this.nextElementSibling.className='status error'; this.nextElementSibling.textContent='❌ Failed'">
+                            <span class="status info">Loading...</span>
+                            <div>
+                                <strong>${test.name}</strong><br>
+                                URL: ${test.url}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="logo-display">
+                            <span class="status warning">⚠️ No URL</span>
+                            <div>
+                                <strong>${test.name}</strong><br>
+                                URL: Not available
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            resultDiv.innerHTML = html;
+        }
+
+        // Test favicon
+        async function testFavicon() {
+            log('Testing favicon update...');
+            try {
+                const response = await fetch('http://localhost:8000/api/logo/current');
+                const result = await response.json();
+                
+                if (result.success) {
+                    const logoUrl = result.data.url;
+                    const timestampedUrl = logoUrl + '?t=' + Date.now();
+                    
+                    // Update favicon
+                    let favicon = document.getElementById('favicon');
+                    if (!favicon) {
+                        favicon = document.createElement('link');
+                        favicon.id = 'favicon';
+                        favicon.rel = 'icon';
+                        favicon.type = 'image/png';
+                        document.head.appendChild(favicon);
+                    }
+                    favicon.href = timestampedUrl;
+                    
+                    log('Favicon updated to: ' + timestampedUrl, 'success');
+                    document.getElementById('favicon-result').innerHTML = 
+                        `<span class="status success">✅ Favicon updated to current logo</span>`;
+                } else {
+                    log('No current logo for favicon', 'warning');
+                    document.getElementById('favicon-result').innerHTML = 
+                        `<span class="status warning">⚠️ No current logo found</span>`;
+                }
+            } catch (error) {
+                log('Favicon test error: ' + error.message, 'error');
+                document.getElementById('favicon-result').innerHTML = 
+                    `<span class="status error">❌ Favicon test failed: ${error.message}</span>`;
+            }
+        }
+
+        // Auto-run initial tests
+        window.addEventListener('load', () => {
+            log('Page loaded, running initial tests...');
+            checkCurrentLogo();
+            testLogoDisplay();
+        });
+    </script>
+</body>
+</html>

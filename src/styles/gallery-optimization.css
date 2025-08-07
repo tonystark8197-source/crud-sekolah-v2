@@ -1,0 +1,44 @@
+/* Gallery Image Optimization CSS */
+
+/* Force immediate image rendering */
+.gallery-image {
+  image-rendering: auto;
+  image-rendering: crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+  transform: translateZ(0);
+  will-change: auto;
+  opacity: 1 !important;
+  transition: none !important;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Preload hint for browsers */
+.gallery-container {
+  contain: layout style paint;
+}
+
+/* Optimize card rendering */
+.gallery-card {
+  contain: layout style;
+  transform: translateZ(0);
+  will-change: auto;
+}
+
+/* Remove any loading animations */
+.gallery-card img {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Force hardware acceleration for smooth rendering */
+.gallery-grid {
+  transform: translateZ(0);
+  will-change: auto;
+  contain: layout;
+}
+
+/* Optimize aspect ratio containers */
+.aspect-ratio-container {
+  contain: layout size;
+}

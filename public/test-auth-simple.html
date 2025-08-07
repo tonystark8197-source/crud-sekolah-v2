@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Auth Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Simple Auth & Route Test</h1>
+    
+    <button onclick="testLogin()">1. Test Login</button>
+    <button onclick="testNewsAdminAll()">2. Test /news/admin/all</button>
+    <button onclick="clearStorage()">3. Clear Storage</button>
+    
+    <div id="result" class="result info">Ready to test...</div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        
+        function log(message, type = 'info') {
+            const element = document.getElementById('result');
+            element.className = `result ${type}`;
+            element.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.log(message);
+        }
+        
+        async function testLogin() {
+            try {
+                log('🔄 Testing login...', 'info');
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@school.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                console.log('Login response status:', response.status);
+                console.log('Login response headers:', [...response.headers.entries()]);
+                
+                const data = await response.json();
+                console.log('Login response data:', data);
+                
+                if (response.ok && data.success) {
+                    localStorage.setItem('adminToken', data.token);
+                    localStorage.setItem('adminUser', JSON.stringify(data.user));
+                    localStorage.setItem('adminTokenExpiry', Date.now() + (24 * 60 * 60 * 1000));
+                    
+                    log(`✅ Login successful!
+User: ${data.user.name}
+Role: ${data.user.role}
+Token: ${data.token.substring(0, 30)}...
+Stored in localStorage`, 'success');
+                } else {
+                    log(`❌ Login failed: ${data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log(`💥 Login error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testNewsAdminAll() {
+            try {
+                const token = localStorage.getItem('adminToken');
+                if (!token) {
+                    log('❌ No token found. Please login first.', 'error');
+                    return;
+                }
+                
+                log('🔄 Testing /news/admin/all...', 'info');
+                console.log('Using token:', token.substring(0, 30) + '...');
+                
+                const url = `${API_BASE}/news/admin/all`;
+                console.log('Request URL:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Response data:', data);
+                    
+                    log(`✅ /news/admin/all successful!
+Status: ${response.status}
+Count: ${data.data?.length || 0} news items
+Response: ${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    const errorText = await response.text();
+                    console.log('Error response text:', errorText);
+                    
+                    log(`❌ /news/admin/all failed!
+Status: ${response.status} ${response.statusText}
+Response: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                console.error('Request error:', error);
+                log(`💥 Request error: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            log('✅ Storage cleared', 'info');
+        }
+        
+        // Check current auth status on load
+        window.onload = function() {
+            const token = localStorage.getItem('adminToken');
+            const user = localStorage.getItem('adminUser');
+            
+            if (token && user) {
+                try {
+                    const userData = JSON.parse(user);
+                    log(`ℹ️ Current auth status:
+Token: ${token.substring(0, 30)}...
+User: ${userData.name}
+Role: ${userData.role}`, 'info');
+                } catch (e) {
+                    log('⚠️ Invalid user data in storage', 'error');
+                }
+            } else {
+                log('ℹ️ No authentication found. Please login.', 'info');
+            }
+        };
+    </script>
+</body>
+</html>

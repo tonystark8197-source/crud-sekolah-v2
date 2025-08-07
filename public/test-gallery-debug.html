@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Gallery API Debug Test</h1>
+    <p><strong>Backend:</strong> http://localhost:8000/api</p>
+    <p><strong>Frontend:</strong> http://localhost:5174</p>
+    
+    <div class="test-section">
+        <h2>🔐 Authentication</h2>
+        <button onclick="testLogin()">Login as Admin</button>
+        <button onclick="checkAuth()">Check Auth Status</button>
+        <button onclick="clearAuth()">Clear Auth</button>
+        <div id="authResult" class="result info">Click Login to start testing...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🖼️ Gallery API Tests</h2>
+        <button onclick="testGetGalleries()">GET /api/gallery</button>
+        <button onclick="testGetGallery(1)">GET /api/gallery/1</button>
+        <button onclick="testCreateGallery()">POST /api/gallery (Create)</button>
+        <button onclick="testUpdateGallery(1)">POST /api/gallery/1 (Update)</button>
+        <button onclick="testDeleteGallery(1)">DELETE /api/gallery/1</button>
+        <div id="galleryResult" class="result info">Ready to test gallery endpoints...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🛠️ Route Diagnostics</h2>
+        <button onclick="testCORS()">Test CORS</button>
+        <button onclick="testServerHealth()">Test Server Health</button>
+        <button onclick="testAllRoutes()">Test All Routes</button>
+        <div id="diagnosticResult" class="result info">Ready for diagnostics...</div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let authToken = localStorage.getItem('adminToken');
+        
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.log(message);
+        }
+        
+        function getAuthHeaders() {
+            return authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
+        }
+        
+        async function testLogin() {
+            try {
+                log('authResult', '🔄 Attempting login...', 'info');
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@school.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    authToken = data.token;
+                    localStorage.setItem('adminToken', authToken);
+                    log('authResult', `✅ Login successful!\nUser: ${data.user.name}\nRole: ${data.user.role}\nToken: ${authToken.substring(0, 30)}...`, 'success');
+                } else {
+                    log('authResult', `❌ Login failed: ${data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log('authResult', `💥 Login error: ${error.message}`, 'error');
+            }
+        }
+        
+        function checkAuth() {
+            if (authToken) {
+                log('authResult', `✅ Token exists: ${authToken.substring(0, 30)}...`, 'success');
+            } else {
+                log('authResult', '❌ No authentication token found', 'warning');
+            }
+        }
+        
+        function clearAuth() {
+            authToken = null;
+            localStorage.removeItem('adminToken');
+            log('authResult', '✅ Authentication cleared', 'info');
+        }
+        
+        async function testGetGalleries() {
+            try {
+                log('galleryResult', '🔄 Testing GET /api/gallery...', 'info');
+                
+                const response = await fetch(`${API_BASE}/gallery`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('galleryResult', `✅ GET /api/gallery successful!\nStatus: ${response.status}\nCount: ${data.data?.length || 0} galleries\nFirst item: ${data.data?.[0]?.title || 'None'}`, 'success');
+                } else {
+                    log('galleryResult', `❌ GET /api/gallery failed!\nStatus: ${response.status}\nError: ${data.message || data.error || 'Unknown'}`, 'error');
+                }
+            } catch (error) {
+                log('galleryResult', `💥 GET /api/gallery error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testGetGallery(id) {
+            try {
+                log('galleryResult', `🔄 Testing GET /api/gallery/${id}...`, 'info');
+                
+                const response = await fetch(`${API_BASE}/gallery/${id}`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('galleryResult', `✅ GET /api/gallery/${id} successful!\nTitle: ${data.data?.title}\nCategory: ${data.data?.category}`, 'success');
+                } else {
+                    log('galleryResult', `❌ GET /api/gallery/${id} failed!\nStatus: ${response.status}\nError: ${data.message || data.error || 'Unknown'}`, 'error');
+                }
+            } catch (error) {
+                log('galleryResult', `💥 GET /api/gallery/${id} error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testCreateGallery() {
+            if (!authToken) {
+                log('galleryResult', '❌ Please login first to test create gallery', 'warning');
+                return;
+            }
+            
+            try {
+                log('galleryResult', '🔄 Testing POST /api/gallery (Create)...', 'info');
+                
+                // Create a simple test image file
+                const canvas = document.createElement('canvas');
+                canvas.width = 100;
+                canvas.height = 100;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(0, 0, 100, 100);
+                
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                const formData = new FormData();
+                formData.append('title', 'Test Gallery Item');
+                formData.append('description', 'Created via debug test');
+                formData.append('category', 'Fasilitas');
+                formData.append('image', blob, 'test-image.png');
+                formData.append('is_active', 'true');
+                formData.append('featured', 'false');
+                formData.append('carousel_pinned', 'false');
+                
+                const response = await fetch(`${API_BASE}/gallery`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('galleryResult', `✅ POST /api/gallery successful!\nID: ${data.data?.id}\nTitle: ${data.data?.title}\nImage URL: ${data.data?.image_url}`, 'success');
+                } else {
+                    log('galleryResult', `❌ POST /api/gallery failed!\nStatus: ${response.status}\nError: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                log('galleryResult', `💥 POST /api/gallery error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testUpdateGallery(id) {
+            if (!authToken) {
+                log('galleryResult', '❌ Please login first to test update gallery', 'warning');
+                return;
+            }
+            
+            try {
+                log('galleryResult', `🔄 Testing POST /api/gallery/${id} (Update)...`, 'info');
+                
+                const response = await fetch(`${API_BASE}/gallery/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...getAuthHeaders()
+                    },
+                    body: JSON.stringify({
+                        _method: 'PUT',
+                        title: 'Updated via Debug Test',
+                        description: 'Updated description',
+                        category: 'Fasilitas'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('galleryResult', `✅ UPDATE /api/gallery/${id} successful!\nResponse: ${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    log('galleryResult', `❌ UPDATE /api/gallery/${id} failed!\nStatus: ${response.status}\nError: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                log('galleryResult', `💥 UPDATE /api/gallery/${id} error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testDeleteGallery(id) {
+            if (!authToken) {
+                log('galleryResult', '❌ Please login first to test delete gallery', 'warning');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete gallery ${id}? This is a real delete!`)) {
+                return;
+            }
+            
+            try {
+                log('galleryResult', `🔄 Testing DELETE /api/gallery/${id}...`, 'info');
+                
+                const response = await fetch(`${API_BASE}/gallery/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('galleryResult', `✅ DELETE /api/gallery/${id} successful!\nResponse: ${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    log('galleryResult', `❌ DELETE /api/gallery/${id} failed!\nStatus: ${response.status}\nError: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                log('galleryResult', `💥 DELETE /api/gallery/${id} error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testCORS() {
+            try {
+                log('diagnosticResult', '🔄 Testing CORS...', 'info');
+                
+                const response = await fetch(`${API_BASE}/gallery`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'GET'
+                    }
+                });
+                
+                log('diagnosticResult', `✅ CORS test completed!\nStatus: ${response.status}\nOrigin: ${window.location.origin}\nAllowed: ${response.headers.get('Access-Control-Allow-Origin')}`, 'success');
+            } catch (error) {
+                log('diagnosticResult', `💥 CORS test error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testServerHealth() {
+            try {
+                log('diagnosticResult', '🔄 Testing server health...', 'info');
+                
+                const response = await fetch(`${API_BASE}/gallery`);
+                
+                if (response.ok) {
+                    log('diagnosticResult', `✅ Server is healthy!\nStatus: ${response.status}\nContent-Type: ${response.headers.get('Content-Type')}`, 'success');
+                } else {
+                    log('diagnosticResult', `⚠️ Server responded but with error!\nStatus: ${response.status}\nStatusText: ${response.statusText}`, 'warning');
+                }
+            } catch (error) {
+                log('diagnosticResult', `💥 Server health check failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testAllRoutes() {
+            const routes = [
+                { method: 'GET', path: '/gallery', auth: false },
+                { method: 'GET', path: '/gallery/1', auth: false },
+                { method: 'POST', path: '/gallery', auth: true },
+                { method: 'POST', path: '/gallery/1', auth: true },
+                { method: 'PUT', path: '/gallery/1', auth: true },
+                { method: 'DELETE', path: '/gallery/1', auth: true }
+            ];
+            
+            let results = [];
+            
+            for (const route of routes) {
+                try {
+                    const headers = route.auth ? getAuthHeaders() : {};
+                    if (route.method === 'POST' && route.path.includes('/gallery/1')) {
+                        headers['Content-Type'] = 'application/json';
+                    }
+                    
+                    const response = await fetch(`${API_BASE}${route.path}`, {
+                        method: route.method,
+                        headers
+                    });
+                    
+                    const status = response.status;
+                    let statusText = '';
+                    
+                    if (status === 200 || status === 201) statusText = '✅ OK';
+                    else if (status === 401) statusText = '🔒 Unauthorized';
+                    else if (status === 403) statusText = '🚫 Forbidden';
+                    else if (status === 404) statusText = '❌ Not Found';
+                    else if (status === 405) statusText = '⚠️ Method Not Allowed';
+                    else if (status === 422) statusText = '📝 Validation Error';
+                    else statusText = `❓ ${status}`;
+                    
+                    results.push(`${statusText} ${route.method} ${route.path} (${status})`);
+                } catch (error) {
+                    results.push(`💥 ${route.method} ${route.path} - ${error.message}`);
+                }
+            }
+            
+            log('diagnosticResult', `Route Test Results:\n${results.join('\n')}`, 'info');
+        }
+        
+        // Auto-check auth on page load
+        window.onload = function() {
+            checkAuth();
+        };
+    </script>
+</body>
+</html>

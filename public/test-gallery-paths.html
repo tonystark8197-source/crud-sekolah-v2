@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Gallery Image Paths</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .gallery-item { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; }
+        .gallery-image { width: 100%; height: 150px; object-fit: cover; }
+        .gallery-info { padding: 10px; }
+        .path-info { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .test-section { border: 1px solid #ddd; padding: 15px; margin: 15px 0; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>🖼️ Test Gallery Image Paths</h1>
+    
+    <div class="path-info">
+        <h3>📊 Path Analysis:</h3>
+        <p><strong>API Endpoint:</strong> <span id="api-endpoint">http://localhost:8000/api/gallery</span></p>
+        <p><strong>Frontend Server:</strong> <span id="frontend-server">http://localhost:5174</span></p>
+        <p><strong>Expected Path:</strong> <span id="expected-path">/images/gallery/filename.jpg</span></p>
+        <p><strong>Total Images:</strong> <span id="total-images">Loading...</span></p>
+        <p><strong>Working Images:</strong> <span id="working-images">Loading...</span></p>
+        <p><strong>Broken Images:</strong> <span id="broken-images">Loading...</span></p>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 Test Actions</h3>
+        <button onclick="testGalleryAPI()">1. Test Gallery API</button>
+        <button onclick="testImagePaths()">2. Test Image Paths</button>
+        <button onclick="testImageLoading()">3. Test Image Loading</button>
+        <button onclick="openGalleryPage()">4. Open Gallery Page</button>
+        <button onclick="clearCache()">5. Clear Cache</button>
+    </div>
+
+    <div id="gallery-preview" class="gallery-grid">
+        <!-- Gallery items will be loaded here -->
+    </div>
+    
+    <div id="result" class="result info">Ready to test gallery image paths...</div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let galleryData = [];
+        
+        function log(message, type = 'info') {
+            const element = document.getElementById('result');
+            element.className = `result ${type}`;
+            element.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.log(message);
+        }
+        
+        function updateStats() {
+            document.getElementById('total-images').textContent = galleryData.length;
+            
+            let workingCount = 0;
+            let brokenCount = 0;
+            
+            galleryData.forEach(item => {
+                if (item.imageStatus === 'loaded') workingCount++;
+                if (item.imageStatus === 'error') brokenCount++;
+            });
+            
+            document.getElementById('working-images').textContent = workingCount;
+            document.getElementById('broken-images').textContent = brokenCount;
+        }
+        
+        // Helper function to get correct image URL (same as useGallery.js)
+        function getGalleryImageUrl(galleryItem) {
+            if (!galleryItem || !galleryItem.image_url) {
+                return '/images/school-building.jpg';
+            }
+
+            const imageUrl = galleryItem.image_url;
+            console.log('Processing gallery image URL:', imageUrl, 'for item:', galleryItem.title);
+
+            // If it's already a full URL from backend, convert to frontend path
+            if (imageUrl.startsWith('http://localhost:8000/images/gallery/')) {
+                const filename = imageUrl.split('/').pop();
+                const frontendPath = `/images/gallery/${filename}`;
+                console.log('Converting backend URL to frontend path:', frontendPath);
+                return frontendPath;
+            }
+
+            // If it's already a full URL (starts with http), return as is
+            if (imageUrl.startsWith('http')) {
+                console.log('Using full URL:', imageUrl);
+                return imageUrl;
+            }
+
+            // If it's /images/gallery path (frontend public format), use directly
+            if (imageUrl.startsWith('/images/gallery/')) {
+                console.log('Using frontend public gallery path:', imageUrl);
+                return imageUrl;
+            }
+
+            // Default fallback
+            console.log('Using fallback for:', imageUrl);
+            return '/images/school-building.jpg';
+        }
+        
+        async function testGalleryAPI() {
+            try {
+                log('🔄 Testing Gallery API...', 'info');
+                
+                const response = await fetch(`${API_BASE}/gallery`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    galleryData = data.data || [];
+                    
+                    log(`✅ API Success!
+Total items: ${galleryData.length}
+Sample URLs:
+${galleryData.slice(0, 3).map(item => `  - ${item.title}: ${item.image_url}`).join('\n')}`, 'success');
+                    
+                    updateStats();
+                } else {
+                    log(`❌ API Error: ${data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log(`💥 API Request Failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function testImagePaths() {
+            if (galleryData.length === 0) {
+                log('❌ No gallery data. Run "Test Gallery API" first.', 'error');
+                return;
+            }
+            
+            log('🔄 Testing image paths...', 'info');
+            
+            const pathAnalysis = {
+                frontend_full: 0,
+                frontend_relative: 0,
+                backend_full: 0,
+                other: 0
+            };
+            
+            const results = galleryData.map(item => {
+                const originalUrl = item.image_url;
+                const processedUrl = getGalleryImageUrl(item);
+                
+                // Analyze path types
+                if (originalUrl.startsWith('http://localhost:5174/images/gallery/')) {
+                    pathAnalysis.frontend_full++;
+                } else if (originalUrl.startsWith('/images/gallery/')) {
+                    pathAnalysis.frontend_relative++;
+                } else if (originalUrl.startsWith('http://localhost:8000/images/gallery/')) {
+                    pathAnalysis.backend_full++;
+                } else {
+                    pathAnalysis.other++;
+                }
+                
+                return {
+                    title: item.title,
+                    original: originalUrl,
+                    processed: processedUrl,
+                    changed: originalUrl !== processedUrl
+                };
+            });
+            
+            log(`📊 Path Analysis:
+Frontend Full URLs: ${pathAnalysis.frontend_full}
+Frontend Relative: ${pathAnalysis.frontend_relative}
+Backend Full URLs: ${pathAnalysis.backend_full}
+Other formats: ${pathAnalysis.other}
+
+🔄 Processing Results:
+${results.map(r => `${r.title}: ${r.changed ? 'CONVERTED' : 'NO CHANGE'}`).join('\n')}`, 'info');
+        }
+        
+        async function testImageLoading() {
+            if (galleryData.length === 0) {
+                log('❌ No gallery data. Run "Test Gallery API" first.', 'error');
+                return;
+            }
+            
+            log('🔄 Testing image loading...', 'info');
+            
+            const galleryPreview = document.getElementById('gallery-preview');
+            galleryPreview.innerHTML = '';
+            
+            for (const item of galleryData) {
+                const processedUrl = getGalleryImageUrl(item);
+                
+                const galleryItem = document.createElement('div');
+                galleryItem.className = 'gallery-item';
+                
+                const img = document.createElement('img');
+                img.className = 'gallery-image';
+                img.src = processedUrl;
+                img.alt = item.title;
+                
+                const info = document.createElement('div');
+                info.className = 'gallery-info';
+                info.innerHTML = `
+                    <strong>${item.title}</strong><br>
+                    <small>Original: ${item.image_url}</small><br>
+                    <small>Processed: ${processedUrl}</small><br>
+                    <span id="status-${item.id}" style="color: orange;">Loading...</span>
+                `;
+                
+                galleryItem.appendChild(img);
+                galleryItem.appendChild(info);
+                galleryPreview.appendChild(galleryItem);
+                
+                // Test image loading
+                img.onload = () => {
+                    document.getElementById(`status-${item.id}`).innerHTML = '<span style="color: green;">✅ Loaded</span>';
+                    item.imageStatus = 'loaded';
+                    updateStats();
+                };
+                
+                img.onerror = () => {
+                    document.getElementById(`status-${item.id}`).innerHTML = '<span style="color: red;">❌ Error</span>';
+                    item.imageStatus = 'error';
+                    updateStats();
+                };
+            }
+            
+            log('✅ Image loading test started. Check gallery preview below.', 'success');
+        }
+        
+        function openGalleryPage() {
+            log('🔄 Opening gallery page...', 'info');
+            window.open('http://localhost:5174/gallery', '_blank');
+        }
+        
+        function clearCache() {
+            try {
+                log('🧹 Clearing cache...', 'info');
+                
+                // Clear gallery data
+                galleryData = [];
+                
+                // Clear preview
+                document.getElementById('gallery-preview').innerHTML = '';
+                
+                // Reset stats
+                document.getElementById('total-images').textContent = '0';
+                document.getElementById('working-images').textContent = '0';
+                document.getElementById('broken-images').textContent = '0';
+                
+                // Clear localStorage
+                localStorage.removeItem('galleryData');
+                localStorage.removeItem('carouselImages');
+                
+                log('✅ Cache cleared', 'success');
+                
+            } catch (error) {
+                log(`💥 Error clearing cache: ${error.message}`, 'error');
+            }
+        }
+        
+        // Initialize on page load
+        window.onload = function() {
+            log('✅ Gallery path test initialized', 'success');
+            
+            // Auto-test API
+            setTimeout(testGalleryAPI, 1000);
+        };
+    </script>
+</body>
+</html>

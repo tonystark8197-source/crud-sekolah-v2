@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Title & Favicon Sync</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button { background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .current-info { background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .test-section { border: 1px solid #ddd; padding: 15px; margin: 15px 0; border-radius: 8px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <h1>🔄 Test Title & Favicon Sync</h1>
+    
+    <div class="current-info">
+        <h3>📊 Current Status:</h3>
+        <p><strong>Page Title:</strong> <span id="current-title">Loading...</span></p>
+        <p><strong>Document Title:</strong> <span id="document-title">Loading...</span></p>
+        <p><strong>Favicon URL:</strong> <span id="current-favicon">Loading...</span></p>
+        <p><strong>Settings Cache:</strong> <span id="settings-cache">Loading...</span></p>
+        <p><strong>Last Updated:</strong> <span id="last-updated">Loading...</span></p>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 Test Settings API</h3>
+        <button onclick="testGetSettings()">Get Current Settings</button>
+        <button onclick="testUpdateSettings()">Update Settings (Mock)</button>
+        <button onclick="clearCache()">Clear Cache</button>
+        
+        <div class="form-group">
+            <label for="testTitle">Test Website Title:</label>
+            <input type="text" id="testTitle" placeholder="SMA Negeri 1 Jakarta - Unggul dalam Prestasi" value="SMA Negeri 1 Jakarta - Unggul dalam Prestasi">
+        </div>
+        
+        <div class="form-group">
+            <label for="testSchoolName">Test School Short Name:</label>
+            <input type="text" id="testSchoolName" placeholder="SMAN 1 Jakarta" value="SMAN 1 Jakarta">
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>🖼️ Test Logo/Favicon</h3>
+        <button onclick="testGetLogo()">Get Current Logo</button>
+        <button onclick="testUpdateFavicon()">Update Favicon</button>
+        <button onclick="testLogoEvent()">Simulate Logo Update Event</button>
+    </div>
+
+    <div class="test-section">
+        <h3>📡 Event Listeners</h3>
+        <button onclick="testEvents()">Test Event System</button>
+        <button onclick="simulateSettingsUpdate()">Simulate Settings Update</button>
+        <button onclick="simulateLogoUpdate()">Simulate Logo Update</button>
+        
+        <div id="event-log" class="result info" style="max-height: 200px; overflow-y: auto;">
+Event log will appear here...
+        </div>
+    </div>
+    
+    <div id="result" class="result info">Ready to test title and favicon sync...</div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let eventLog = [];
+        
+        function log(message, type = 'info') {
+            const element = document.getElementById('result');
+            element.className = `result ${type}`;
+            element.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.log(message);
+        }
+        
+        function logEvent(message) {
+            eventLog.push(`[${new Date().toLocaleTimeString()}] ${message}`);
+            const eventLogElement = document.getElementById('event-log');
+            eventLogElement.textContent = eventLog.slice(-10).join('\n'); // Show last 10 events
+            console.log('EVENT:', message);
+        }
+        
+        function updateCurrentInfo() {
+            // Update current title
+            const pageTitle = document.getElementById('page-title');
+            document.getElementById('current-title').textContent = pageTitle ? pageTitle.textContent : 'N/A';
+            document.getElementById('document-title').textContent = document.title;
+            
+            // Update current favicon
+            const favicon = document.querySelector('link[rel="icon"]') || document.querySelector('link[rel="shortcut icon"]');
+            document.getElementById('current-favicon').textContent = favicon ? favicon.href : 'None';
+            
+            // Update settings cache
+            const settings = localStorage.getItem('schoolSettings');
+            if (settings) {
+                try {
+                    const parsed = JSON.parse(settings);
+                    document.getElementById('settings-cache').textContent = 
+                        `Title: ${parsed.websiteTitle || 'N/A'}, Logo: ${parsed.logoUrl ? 'Set' : 'None'}`;
+                } catch (e) {
+                    document.getElementById('settings-cache').textContent = 'Invalid JSON';
+                }
+            } else {
+                document.getElementById('settings-cache').textContent = 'No cached settings';
+            }
+            
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        }
+        
+        async function testGetSettings() {
+            try {
+                log('🔄 Getting current settings...', 'info');
+                
+                const response = await fetch(`${API_BASE}/settings`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                const data = await response.json();
+                console.log('Settings response:', data);
+                
+                if (response.ok && data.success !== false) {
+                    const settings = Array.isArray(data) ? data : (data.data || data);
+                    
+                    // Convert array to object if needed
+                    let settingsObj = {};
+                    if (Array.isArray(settings)) {
+                        settings.forEach(setting => {
+                            settingsObj[setting.key] = setting.value;
+                        });
+                    } else {
+                        settingsObj = settings;
+                    }
+                    
+                    log(`✅ Settings retrieved!
+Website Title: ${settingsObj.websiteTitle || 'N/A'}
+School Name: ${settingsObj.schoolName || 'N/A'}
+Short Name: ${settingsObj.schoolShortName || 'N/A'}
+Logo URL: ${settingsObj.logoUrl || 'N/A'}
+Total Settings: ${Array.isArray(settings) ? settings.length : Object.keys(settingsObj).length}`, 'success');
+                    
+                    // Update localStorage
+                    localStorage.setItem('schoolSettings', JSON.stringify(settingsObj));
+                    updateCurrentInfo();
+                } else {
+                    log(`❌ Failed to get settings: ${data.message || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log(`💥 Error getting settings: ${error.message}`, 'error');
+            }
+        }
+        
+        function testUpdateSettings() {
+            try {
+                log('🔄 Simulating settings update...', 'info');
+                
+                const newTitle = document.getElementById('testTitle').value;
+                const schoolName = document.getElementById('testSchoolName').value;
+                
+                if (!newTitle && !schoolName) {
+                    log('❌ Please enter a title or school name', 'error');
+                    return;
+                }
+                
+                // Simulate settings update
+                const settings = JSON.parse(localStorage.getItem('schoolSettings') || '{}');
+                if (newTitle) settings.websiteTitle = newTitle;
+                if (schoolName) settings.schoolShortName = schoolName;
+                localStorage.setItem('schoolSettings', JSON.stringify(settings));
+                
+                // Update title immediately (simulate SettingsManagement behavior)
+                if (newTitle) {
+                    document.title = newTitle;
+                    const titleElement = document.getElementById('page-title');
+                    if (titleElement) titleElement.textContent = newTitle;
+                }
+                
+                // Dispatch event (simulate SettingsManagement behavior)
+                window.dispatchEvent(new CustomEvent('schoolSettingsUpdated', { 
+                    detail: settings 
+                }));
+                
+                updateCurrentInfo();
+                log(`✅ Settings updated!
+New Title: ${newTitle || 'Not changed'}
+New School Name: ${schoolName || 'Not changed'}`, 'success');
+                
+            } catch (error) {
+                log(`💥 Error updating settings: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testGetLogo() {
+            try {
+                log('🔄 Getting current logo...', 'info');
+                
+                const response = await fetch(`${API_BASE}/logo/current`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Logo response:', data);
+                    
+                    if (data.success && data.data && data.data.url) {
+                        const logoUrl = data.data.url;
+                        log(`✅ Logo retrieved!
+URL: ${logoUrl}
+Description: ${data.data.description || 'N/A'}
+Active: ${data.data.is_active ? 'Yes' : 'No'}`, 'success');
+                    } else {
+                        log('❌ No logo found in API response', 'error');
+                    }
+                } else {
+                    log(`❌ Failed to get logo: ${response.status}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`💥 Error getting logo: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testUpdateFavicon() {
+            try {
+                log('🔄 Testing favicon update...', 'info');
+                
+                // Get current logo from API
+                const response = await fetch(`${API_BASE}/logo/current`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success && data.data && data.data.url) {
+                        const logoUrl = data.data.url;
+                        
+                        // Update localStorage
+                        const settings = JSON.parse(localStorage.getItem('schoolSettings') || '{}');
+                        settings.logoUrl = logoUrl;
+                        localStorage.setItem('schoolSettings', JSON.stringify(settings));
+                        
+                        // Force update favicon (simulate LogoManagement behavior)
+                        const timestamp = Date.now();
+                        const timestampedUrl = `${logoUrl}?t=${timestamp}&force=1`;
+                        
+                        // Remove existing favicons
+                        const existingFavicons = document.querySelectorAll('link[rel*="icon"]');
+                        existingFavicons.forEach(favicon => favicon.remove());
+                        
+                        // Create new favicon
+                        const favicon = document.createElement('link');
+                        favicon.id = 'favicon';
+                        favicon.rel = 'icon';
+                        favicon.type = 'image/png';
+                        favicon.href = timestampedUrl;
+                        document.head.appendChild(favicon);
+                        
+                        // Create apple touch icon
+                        const appleTouchIcon = document.createElement('link');
+                        appleTouchIcon.id = 'apple-touch-icon';
+                        appleTouchIcon.rel = 'apple-touch-icon';
+                        appleTouchIcon.href = timestampedUrl;
+                        document.head.appendChild(appleTouchIcon);
+                        
+                        updateCurrentInfo();
+                        log(`✅ Favicon updated!
+URL: ${timestampedUrl}`, 'success');
+                        
+                    } else {
+                        log('❌ No logo found in API response', 'error');
+                    }
+                } else {
+                    log(`❌ Failed to get logo: ${response.status}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`💥 Error updating favicon: ${error.message}`, 'error');
+            }
+        }
+        
+        function testLogoEvent() {
+            try {
+                log('🔄 Simulating logo update event...', 'info');
+                
+                const settings = JSON.parse(localStorage.getItem('schoolSettings') || '{}');
+                if (settings.logoUrl) {
+                    // Dispatch logo update event
+                    window.dispatchEvent(new CustomEvent('logoUpdated', { 
+                        detail: { logoUrl: settings.logoUrl }
+                    }));
+                    
+                    log('✅ Logo update event dispatched', 'success');
+                } else {
+                    log('❌ No logo URL in settings', 'warning');
+                }
+                
+            } catch (error) {
+                log(`💥 Error simulating logo event: ${error.message}`, 'error');
+            }
+        }
+        
+        function testEvents() {
+            log('🔄 Testing event system...', 'info');
+            
+            // Test if event listeners are working
+            const testData = { test: true, timestamp: Date.now() };
+            
+            window.dispatchEvent(new CustomEvent('schoolSettingsUpdated', { detail: testData }));
+            window.dispatchEvent(new CustomEvent('logoUpdated', { detail: testData }));
+            
+            log('✅ Test events dispatched. Check event log.', 'success');
+        }
+        
+        function simulateSettingsUpdate() {
+            const settings = {
+                websiteTitle: 'Test Website Title - Updated',
+                schoolShortName: 'Test School',
+                logoUrl: 'http://localhost:5174/images/logo/test-logo.png'
+            };
+            
+            localStorage.setItem('schoolSettings', JSON.stringify(settings));
+            window.dispatchEvent(new CustomEvent('schoolSettingsUpdated', { detail: settings }));
+            
+            logEvent('Settings update event dispatched');
+            updateCurrentInfo();
+        }
+        
+        function simulateLogoUpdate() {
+            const logoUrl = 'http://localhost:5174/images/logo/test-logo-updated.png';
+            
+            const settings = JSON.parse(localStorage.getItem('schoolSettings') || '{}');
+            settings.logoUrl = logoUrl;
+            localStorage.setItem('schoolSettings', JSON.stringify(settings));
+            
+            window.dispatchEvent(new CustomEvent('logoUpdated', { detail: { logoUrl } }));
+            
+            logEvent('Logo update event dispatched');
+            updateCurrentInfo();
+        }
+        
+        function clearCache() {
+            try {
+                log('🧹 Clearing cache...', 'info');
+                
+                localStorage.removeItem('schoolSettings');
+                sessionStorage.removeItem('cachedLogoUrl');
+                
+                // Reset title
+                document.title = 'Test Title & Favicon Sync';
+                
+                // Reset favicon
+                const existingFavicons = document.querySelectorAll('link[rel*="icon"]');
+                existingFavicons.forEach(favicon => favicon.remove());
+                
+                const defaultFavicon = document.createElement('link');
+                defaultFavicon.id = 'favicon';
+                defaultFavicon.rel = 'icon';
+                defaultFavicon.type = 'image/x-icon';
+                defaultFavicon.href = '/favicon.ico';
+                document.head.appendChild(defaultFavicon);
+                
+                updateCurrentInfo();
+                log('✅ Cache cleared and reset to defaults', 'success');
+                
+            } catch (error) {
+                log(`💥 Error clearing cache: ${error.message}`, 'error');
+            }
+        }
+        
+        // Event listeners for testing
+        window.addEventListener('schoolSettingsUpdated', (event) => {
+            logEvent(`schoolSettingsUpdated: ${JSON.stringify(event.detail)}`);
+        });
+        
+        window.addEventListener('logoUpdated', (event) => {
+            logEvent(`logoUpdated: ${JSON.stringify(event.detail)}`);
+        });
+        
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'schoolSettings') {
+                logEvent(`localStorage changed: ${event.key}`);
+            }
+        });
+        
+        // Initialize on page load
+        window.onload = function() {
+            updateCurrentInfo();
+            
+            // Auto-get settings
+            setTimeout(testGetSettings, 1000);
+            
+            // Update info every 3 seconds
+            setInterval(updateCurrentInfo, 3000);
+        };
+    </script>
+</body>
+</html>
